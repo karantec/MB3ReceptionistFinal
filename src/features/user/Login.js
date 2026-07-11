@@ -1,23 +1,47 @@
+// src/pages/Login.jsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
-  const INITIAL_LOGIN_OBJ = { password: "", emailId: "" };
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [loginObj, setLoginObj] = useState(INITIAL_LOGIN_OBJ);
+  const [loginObj, setLoginObj] = useState({
+    email: "",
+    password: "",
+  });
   const [showPassword, setShowPassword] = useState(false);
 
-  const submitForm = (e) => {
+  const submitForm = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    if (loginObj.emailId.trim() === "")
-      return setErrorMessage("Email Id is required!");
-    if (loginObj.password.trim() === "")
+
+    if (loginObj.email.trim() === "") {
+      return setErrorMessage("Email is required!");
+    }
+    if (loginObj.password.trim() === "") {
       return setErrorMessage("Password is required!");
+    }
+
     setLoading(true);
-    localStorage.setItem("token", "DummyTokenHere");
-    setLoading(false);
-    window.location.href = "/app/dashboard";
+
+    try {
+      const result = await login(loginObj.email, loginObj.password);
+
+      if (result.success) {
+        // Redirect to dashboard
+        navigate("/app/dashboard", { replace: true });
+      } else {
+        setErrorMessage(result.message);
+      }
+    } catch (error) {
+      setErrorMessage("An error occurred during login. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateFormValue = (field, value) => {
@@ -27,11 +51,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
-      {/* LEFT: Image area
-          - On small/medium screens this becomes a top banner (h-56 / md:h-72)
-          - On large screens it becomes a fixed left column 70% wide and full-height
-          - lg:overflow-hidden ensures the desktop layout does not scroll
-      */}
       <div
         className="
           w-full h-56 md:h-72 lg:h-screen
@@ -48,10 +67,6 @@ export default function Login() {
         />
       </div>
 
-      {/* RIGHT: Form area
-          - On small/medium screens this is full width below the image and scrollable if needed
-          - On large screens this is a centered fixed panel taking 30% width and full height (no page scroll)
-      */}
       <div
         className="
           w-full lg:w-[30%]
@@ -62,7 +77,6 @@ export default function Login() {
         "
       >
         <div className="w-full max-w-md">
-          {/* Logo */}
           <div className="mb-6 lg:mb-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex gap-1">
@@ -84,15 +98,14 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={submitForm} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-2">Login</label>
+              <label className="block text-sm text-gray-600 mb-2">Email</label>
               <input
-                type="text"
-                value={loginObj.emailId}
-                onChange={(e) => updateFormValue("emailId", e.target.value)}
-                placeholder="Email or phone number"
+                type="email"
+                value={loginObj.email}
+                onChange={(e) => updateFormValue("email", e.target.value)}
+                placeholder="Enter your email"
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>

@@ -1,15 +1,29 @@
 import routes from "../routes/sidebar";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import SidebarSubmenu from "./SidebarSubmenu";
 import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
 import { useDispatch } from "react-redux";
+import { useAuth } from "../context/AuthContext";
+import { NotificationManager } from "react-notifications";
 
 function LeftSidebar() {
   const location = useLocation();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const close = () => {
     document.getElementById("left-sidebar-drawer").click();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+      NotificationManager.success("Logged out successfully", "Success");
+    } catch (error) {
+      NotificationManager.error("Failed to logout", "Error");
+    }
   };
 
   return (
@@ -60,7 +74,7 @@ function LeftSidebar() {
         </div>
 
         {/* Nav Items */}
-        <nav className="flex flex-col gap-0.5 px-6 flex-1">
+        <nav className="flex flex-col gap-0.5 px-6 flex-1 overflow-y-auto">
           {routes.map((route, k) => {
             return (
               <div key={k}>
@@ -77,6 +91,7 @@ function LeftSidebar() {
                       }`
                     }
                     style={{ fontFamily: "sans-serif", textDecoration: "none" }}
+                    onClick={close}
                   >
                     <span className="flex items-center gap-3">
                       <span className="h-5 w-5 flex-shrink-0">
@@ -91,6 +106,29 @@ function LeftSidebar() {
             );
           })}
         </nav>
+
+        {/* Logout Button at bottom */}
+        <div className="border-t border-gray-200 p-4 mt-auto">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-all duration-150"
+          >
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
     </div>
   );

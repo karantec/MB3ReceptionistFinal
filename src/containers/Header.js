@@ -6,14 +6,19 @@ import Bars3Icon from "@heroicons/react/24/outline/Bars3Icon";
 import MagnifyingGlassIcon from "@heroicons/react/24/outline/MagnifyingGlassIcon";
 import { openRightDrawer } from "../features/common/rightDrawerSlice";
 import { RIGHT_DRAWER_TYPES } from "../utils/globalConstantUtil";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { NotificationManager } from "react-notifications";
 
 function Header() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { noOfNotifications, pageTitle } = useSelector((state) => state.header);
   const [currentTheme, setCurrentTheme] = useState(
     localStorage.getItem("theme"),
   );
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     themeChange(false);
@@ -38,21 +43,43 @@ function Header() {
     );
   };
 
-  function logoutUser() {
-    localStorage.clear();
-    window.location.href = "/";
-  }
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+      NotificationManager.success("Logged out successfully", "Success");
+    } catch (error) {
+      NotificationManager.error("Failed to logout", "Error");
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (user?.FullName) {
+      const names = user.FullName.split(" ");
+      if (names.length >= 2) {
+        return `${names[0].charAt(0)}${names[1].charAt(0)}`.toUpperCase();
+      }
+      return user.FullName.charAt(0).toUpperCase();
+    }
+    if (user?.fullName) {
+      const names = user.fullName.split(" ");
+      if (names.length >= 2) {
+        return `${names[0].charAt(0)}${names[1].charAt(0)}`.toUpperCase();
+      }
+      return user.fullName.charAt(0).toUpperCase();
+    }
+    if (user?.Email) {
+      return user.Email.charAt(0).toUpperCase();
+    }
+    return "U";
+  };
 
   return (
     <>
       <div className="navbar sticky top-0 bg-white z-10 shadow-sm border-b border-gray-200 px-6 h-[4.5rem]">
-        {/* <div className="hidden lg:block h-20 w-px mr-4 bg-gray-200 " /> */}
         {/* Left Section - Logo, Divider, Menu toggle and Search */}
         <div className="flex-1 flex items-center gap-4">
-          {/* Equinix Logo with border box */}
-
-          {/* Vertical Divider Line after Logo */}
-
           {/* Mobile menu toggle */}
           <label
             htmlFor="left-sidebar-drawer"
@@ -90,7 +117,7 @@ function Header() {
         {/* Right Section - Icons and Profile */}
         <div className="flex items-center gap-6">
           {/* Notification Bell Section */}
-          <div className="relative">
+          <div className="relative cursor-pointer" onClick={openNotification}>
             <div className="p-3 bg-gray-50 rounded-2xl flex items-center justify-center">
               <div className="relative">
                 <BellIcon className="h-7 w-7 text-gray-800" strokeWidth={1.5} />
@@ -109,18 +136,25 @@ function Header() {
             <label
               tabIndex={0}
               className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1 rounded-xl transition-colors"
+              onClick={() => setShowDropdown(!showDropdown)}
             >
-              {/* Avatar Image */}
-              <div className="w-12 h-12 rounded-2xl overflow-hidden bg-blue-100">
-                <img
-                  src="path_to_your_avatar_image.jpg"
-                  alt="Vaasudeva"
-                  className="w-full h-full object-cover"
-                />
+              {/* Avatar */}
+              <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center text-white text-xl font-bold">
+                {user?.ProfileImage || user?.profileImage ? (
+                  <img
+                    src={user.ProfileImage || user.profileImage}
+                    alt={user.FullName || user.fullName || "User"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  getUserInitials()
+                )}
               </div>
 
               {/* User Name */}
-              <span className="text-xl font-bold text-gray-800">Vaasudeva</span>
+              <span className="text-xl font-bold text-gray-800">
+                {user?.FullName || user?.fullName || "User"}
+              </span>
 
               {/* Filled Down Arrow */}
               <svg
@@ -138,19 +172,103 @@ function Header() {
             </label>
 
             {/* Dropdown Menu */}
-            <ul
-              tabIndex={0}
-              className="menu menu-compact dropdown-content mt-3 p-2 shadow-xl bg-white rounded-xl w-52 border border-gray-100 z-[1]"
-            >
-              <li>
-                <a
-                  onClick={logoutUser}
-                  className="text-red-600 font-medium py-3"
-                >
-                  Logout
-                </a>
-              </li>
-            </ul>
+            {showDropdown && (
+              <ul
+                tabIndex={0}
+                className="menu menu-compact dropdown-content mt-3 p-2 shadow-xl bg-white rounded-xl w-52 border border-gray-100 z-[1]"
+              >
+                {/* User Info in dropdown */}
+                <li className="px-2 py-2 border-b border-gray-100">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {user?.FullName || user?.fullName || "User"}
+                    </span>
+                    <span className="text-xs text-gray-500 truncate">
+                      {user?.Email || user?.email}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full inline-block mt-1 w-fit">
+                      {user?.Role || user?.role || "User"}
+                    </span>
+                  </div>
+                </li>
+
+                <li>
+                  <Link
+                    to="/app/profile"
+                    className="flex items-center gap-2 py-3 px-3 text-gray-700 hover:bg-gray-50 rounded-lg"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    Profile
+                  </Link>
+                </li>
+
+                <li>
+                  <Link
+                    to="/app/settings"
+                    className="flex items-center gap-2 py-3 px-3 text-gray-700 hover:bg-gray-50 rounded-lg"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    Settings
+                  </Link>
+                </li>
+
+                <div className="divider my-1"></div>
+
+                <li>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 py-3 px-3 text-red-600 hover:bg-red-50 rounded-lg w-full"
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
+                    Logout
+                  </button>
+                </li>
+              </ul>
+            )}
           </div>
         </div>
       </div>

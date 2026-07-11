@@ -58,11 +58,9 @@ function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-600">Dashboard</h1>
-      </div>
+    <div className="bg-gray-50 p-6">
+      {/* Page Title - Clean and minimal */}
+      <h1 className="text-2xl font-semibold text-gray-700 mb-6">Dashboard</h1>
 
       {/* Stats Cards */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-[400px] mt-4">
@@ -108,17 +106,13 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
       {/* Visitor Table */}
-      <div className="bg-white rounded-3xl shadow-sm p-8 w-[80%] mt-4">
-        {" "}
-        {/* Increased padding for the "frame" effect */}
-        <div className="">
-          {/* Removed w-full and added a specific max-width or let it wrap content */}
+      <div className="bg-white rounded-3xl shadow-sm p-8 w-full mt-6">
+        <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-y-0">
             <thead>
               <tr className="bg-gray-50/80">
-                {" "}
-                {/* Subtle gray header background */}
                 <th className="text-left py-4 px-8 text-sm font-semibold text-red-500 first:rounded-l-2xl">
                   Visitor Name
                 </th>
@@ -139,7 +133,6 @@ function Dashboard() {
                   key={idx}
                   className="group hover:bg-gray-50/50 transition-colors"
                 >
-                  {/* Using px-8 to create the wide column spacing seen in your image */}
                   <td className="py-5 px-8 text-sm text-gray-800 font-medium">
                     {visitor.name}
                   </td>
