@@ -1,6 +1,5 @@
 // src/pages/IDManagement.jsx
 import React, { useState, useEffect } from "react";
-
 import { NotificationManager } from "react-notifications";
 import idManagementService from "../../services/idManagement.service";
 
@@ -72,14 +71,34 @@ export default function IDManagementPage() {
     try {
       setLoading(true);
       const response = await idManagementService.getAll();
-      console.log("API Response:", response); // Debug log
+      console.log("API Response:", response);
 
       // Check if response has records field (from your API)
       if (response && response.success) {
-        // Your API returns data in 'records' field, not 'data'
+        // Your API returns data in 'records' field
         const records = response.records || [];
-        setVisitors(records);
-        console.log("Records loaded:", records.length);
+
+        // Transform the data to match the component's expected format
+        // The API returns camelCase field names
+        const transformedRecords = records.map((record) => ({
+          IdManagementID: record._id || record.IdManagementID,
+          VisitorName: record.visitorName || "",
+          PhoneNumber: record.phoneNumber || "",
+          Email: record.email || "",
+          Company: record.company || "",
+          Purpose: record.purpose || "",
+          IdType: record.idType || "Visitor",
+          IdNumber: record.idNumber || "",
+          ValidFrom: record.validFrom || "",
+          ValidUntil: record.validUntil || "",
+          Status: record.status || "Active",
+          IsActive: record.isActive,
+          CreatedAt: record.createdAt,
+          UpdatedAt: record.updatedAt,
+        }));
+
+        setVisitors(transformedRecords);
+        console.log("Records loaded:", transformedRecords.length);
       } else {
         setVisitors([]);
         NotificationManager.error("Failed to fetch records", "Error");
