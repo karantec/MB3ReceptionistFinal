@@ -6,7 +6,7 @@ const AuthContext = createContext(null);
 
 // Configure axios defaults
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: 'https://mb3-ivxh.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },

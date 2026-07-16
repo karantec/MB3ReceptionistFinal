@@ -1,6 +1,5 @@
 // src/pages/Companies.jsx
 import React, { useState, useEffect } from "react";
-
 import { NotificationManager } from "react-notifications";
 import companyService from "../../services/company.service";
 
@@ -36,7 +35,7 @@ function Companies() {
 
       // Check if response has companies field (from your API)
       if (response && response.success) {
-        // Your API returns data in 'companies' field, not 'data'
+        // Your API returns data in 'companies' field
         const companiesData = response.companies || [];
         setCompanies(companiesData);
         console.log("Companies loaded:", companiesData.length);
@@ -84,13 +83,13 @@ function Companies() {
   const handleOpenEditModal = (company) => {
     setEditingCompany(company);
     setFormData({
-      companyName: company.CompanyName || "",
-      contactPerson: company.ContactPerson || "",
-      email: company.Email || "",
-      phone: company.Phone || "",
-      address: company.Address || "",
-      industry: company.Industry || "",
-      website: company.Website || "",
+      companyName: company.companyName || "",
+      contactPerson: company.contactPerson || "",
+      email: company.email || "",
+      phone: company.phone || "",
+      address: company.address || "",
+      industry: company.industry || "",
+      website: company.website || "",
     });
     setShowModal(true);
     setOpenMenuId(null);
@@ -111,7 +110,7 @@ function Companies() {
       if (editingCompany) {
         // Update existing company
         const response = await companyService.update(
-          editingCompany.CompanyID,
+          editingCompany._id,
           formData,
         );
         if (response && response.success) {
@@ -121,6 +120,11 @@ function Companies() {
           );
           fetchCompanies();
           handleCloseModal();
+        } else {
+          NotificationManager.error(
+            response?.message || "Update failed",
+            "Error",
+          );
         }
       } else {
         // Create new company
@@ -132,10 +136,19 @@ function Companies() {
           );
           fetchCompanies();
           handleCloseModal();
+        } else {
+          NotificationManager.error(
+            response?.message || "Creation failed",
+            "Error",
+          );
         }
       }
     } catch (error) {
-      NotificationManager.error(error.message || "Operation failed", "Error");
+      console.error("Save error:", error);
+      NotificationManager.error(
+        error.response?.data?.message || error.message || "Operation failed",
+        "Error",
+      );
     }
   };
 
@@ -164,9 +177,18 @@ function Companies() {
           );
           fetchCompanies();
           setOpenMenuId(null);
+        } else {
+          NotificationManager.error(
+            response?.message || "Delete failed",
+            "Error",
+          );
         }
       } catch (error) {
-        NotificationManager.error(error.message || "Delete failed", "Error");
+        console.error("Delete error:", error);
+        NotificationManager.error(
+          error.response?.data?.message || error.message || "Delete failed",
+          "Error",
+        );
       }
     }
   };
@@ -195,10 +217,10 @@ function Companies() {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
-      (company.CompanyName || "").toLowerCase().includes(search) ||
-      (company.ContactPerson || "").toLowerCase().includes(search) ||
-      (company.Email || "").toLowerCase().includes(search) ||
-      (company.Industry || "").toLowerCase().includes(search)
+      (company.companyName || "").toLowerCase().includes(search) ||
+      (company.contactPerson || "").toLowerCase().includes(search) ||
+      (company.email || "").toLowerCase().includes(search) ||
+      (company.industry || "").toLowerCase().includes(search)
     );
   });
 
@@ -267,25 +289,25 @@ function Companies() {
           ) : (
             filteredCompanies.map((company) => (
               <div
-                key={company.CompanyID}
+                key={company._id}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 flex justify-between items-center hover:shadow-md transition-shadow"
               >
                 <div className="flex-1">
                   <p className="text-sm text-gray-900 font-medium">
-                    {company.CompanyName}
+                    {company.companyName}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-1">
                     <span className="text-xs text-gray-500">
-                      Contact: {company.ContactPerson || "N/A"}
+                      Contact: {company.contactPerson || "N/A"}
                     </span>
-                    {company.Industry && (
+                    {company.industry && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        {company.Industry}
+                        {company.industry}
                       </span>
                     )}
-                    {company.Email && (
+                    {company.email && (
                       <span className="text-xs text-gray-500">
-                        {company.Email}
+                        {company.email}
                       </span>
                     )}
                   </div>
@@ -295,9 +317,7 @@ function Companies() {
                   <button
                     onClick={() =>
                       setOpenMenuId(
-                        openMenuId === company.CompanyID
-                          ? null
-                          : company.CompanyID,
+                        openMenuId === company._id ? null : company._id,
                       )
                     }
                     className="p-1 text-gray-500 hover:text-gray-700 text-lg leading-none"
@@ -305,7 +325,7 @@ function Companies() {
                     ⋮
                   </button>
 
-                  {openMenuId === company.CompanyID && (
+                  {openMenuId === company._id && (
                     <div className="absolute right-0 top-0 mt-8 z-10 bg-white border border-gray-100 rounded-xl shadow-lg p-2 flex flex-col gap-2 w-40">
                       <button
                         onClick={() => handleOpenEditModal(company)}
@@ -321,7 +341,7 @@ function Companies() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteCompany(company.CompanyID)}
+                        onClick={() => handleDeleteCompany(company._id)}
                         className="w-full py-2 px-4 rounded-lg bg-red-500 text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-red-600 transition-colors"
                       >
                         <svg

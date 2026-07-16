@@ -1,7 +1,7 @@
 // src/services/company.service.js
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/Company";
+const API_URL = "https://mb3-ivxh.onrender.com/api/Company";
 
 // Get auth token from localStorage
 const getAuthToken = () => {
