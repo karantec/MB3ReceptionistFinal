@@ -1,6 +1,4 @@
-// Visitors.jsx
 import { useState, useEffect, useCallback } from "react";
-
 import { toast } from "react-hot-toast";
 import { qrUtils, visitorService } from "../../services/visitorService";
 import companyService from "../../services/company.service";
@@ -93,8 +91,10 @@ function Visitors() {
 
   const fetchCompanies = useCallback(async () => {
     try {
-      const response = await companyService.getAllCompanies();
-      setCompanies(response.data || []);
+      const response = await companyService.getAll();
+      const companiesList = response.companies || response.data || [];
+      const companyNames = companiesList.map(c => typeof c === "string" ? c : (c.companyName || c.name || ""));
+      setCompanies(companyNames);
     } catch (err) {
       console.error("Error fetching companies:", err);
       setCompanies([
@@ -179,10 +179,15 @@ function Visitors() {
     }
 
     setLoading(true);
+    console.log("TRACE: [Frontend UI] Submit button clicked in QR Generator modal.");
+    console.log("TRACE: [Frontend UI] selectedVisitorId:", selectedVisitorId);
+    console.log("TRACE: [Frontend UI] Form state: Name:", qrFormData.name, "Contact:", qrFormData.contact, "Email:", qrFormData.email, "Company:", qrFormData.company);
+
     try {
       let visitorId = selectedVisitorId;
 
       if (!visitorId) {
+        console.log("TRACE: [Frontend UI] No visitor ID. Flow path -> Create new visitor first.");
         const newVisitor = {
           visitorName: qrFormData.name,
           phoneNumber: qrFormData.contact,
@@ -195,12 +200,15 @@ function Visitors() {
 
         const response = await visitorService.createVisitor(newVisitor);
         visitorId = response.data.id;
+        console.log("TRACE: [Frontend UI] Successfully created visitor. Generated DB ID:", visitorId);
         toast.success(`Visitor ${qrFormData.name} created successfully`);
       } else {
+        console.log("TRACE: [Frontend UI] Visitor ID exists. Flow path -> Send QR code directly to ID:", visitorId);
         await visitorService.sendQR(visitorId, {
           phoneNumber: qrFormData.contact,
           email: qrFormData.email,
         });
+        console.log("TRACE: [Frontend UI] Success response returned from sendQR API call.");
         toast.success(`QR Code sent to ${qrFormData.name}`);
       }
 
@@ -217,6 +225,7 @@ function Visitors() {
       });
       setSelectedVisitorId(null);
     } catch (err) {
+      console.error("TRACE: [Frontend UI] Error caught during creation or sendQR:", err);
       toast.error(err.message || "Failed to send QR code");
       console.error("Error sending QR:", err);
     } finally {
@@ -289,58 +298,167 @@ function Visitors() {
     return new Date() > new Date(expiryDate);
   };
 
-  // ============================
-  // RENDER
-  // ============================
+  // Bar chart heights matching the design
+  const barHeights = [30, 45, 60, 80, 95, 100, 85, 70, 55, 40];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 max-w-full">
-      {/* QR Code Display Modal */}
+    <div
+      style={{
+        backgroundColor: "#f3f4f6",
+        minHeight: "100vh",
+        padding: "28px 32px",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      {/* ── QR Code Display Modal ── */}
       {showQRCodeModal && selectedQRCode && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">QR Code</h2>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+            zIndex: 50,
+          }}
+          onClick={() => setShowQRCodeModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "20px",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              width: "100%",
+              maxWidth: "448px",
+              padding: "32px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "16px",
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "700",
+                  color: "#1f2937",
+                  margin: 0,
+                }}
+              >
+                QR Code
+              </h2>
               <button
                 onClick={() => setShowQRCodeModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center hover:bg-gray-700"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  backgroundColor: "#4b5563",
+                  color: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
               >
                 ✕
               </button>
             </div>
 
-            <div className="text-center">
-              <p className="text-gray-600 mb-2">
+            <div style={{ textAlign: "center" }}>
+              <p style={{ color: "#4b5563", marginBottom: "8px", margin: 0 }}>
                 <strong>{selectedVisitor?.name}</strong>
               </p>
-              <p className="text-sm text-gray-500 mb-4">
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#6b7280",
+                  marginBottom: "16px",
+                  margin: 0,
+                }}
+              >
                 {selectedVisitor?.phone}
               </p>
 
-              <div className="flex justify-center mb-4">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginBottom: "16px",
+                }}
+              >
                 {selectedQRCode && selectedQRCode.startsWith("data:image") ? (
                   <img
                     src={selectedQRCode}
                     alt="QR Code"
-                    className="w-64 h-64 border-2 border-gray-200 rounded-lg p-2"
+                    style={{
+                      width: "256px",
+                      height: "256px",
+                      border: "2px solid #e5e7eb",
+                      borderRadius: "8px",
+                      padding: "8px",
+                    }}
                   />
                 ) : (
-                  <div className="w-64 h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                  <div
+                    style={{
+                      width: "256px",
+                      height: "256px",
+                      backgroundColor: "#f3f4f6",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#9ca3af",
+                    }}
+                  >
                     QR Code not available
                   </div>
                 )}
               </div>
 
-              <p className="text-xs text-gray-500 break-all">
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#6b7280",
+                  wordBreak: "break-all",
+                }}
+              >
                 Token: {selectedVisitor?.qrToken?.substring(0, 16)}...
               </p>
               {selectedVisitor?.qrExpiresAt && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#6b7280",
+                    marginTop: "4px",
+                  }}
+                >
                   Expires: {formatDate(selectedVisitor.qrExpiresAt)}
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  marginTop: "16px",
+                  justifyContent: "center",
+                }}
+              >
                 <button
                   onClick={() => {
                     if (
@@ -351,7 +469,15 @@ function Visitors() {
                       toast.error("Failed to download QR code");
                     }
                   }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all text-sm"
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#3b82f6",
+                    color: "#ffffff",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                  }}
                 >
                   ⬇️ Download
                 </button>
@@ -364,7 +490,15 @@ function Visitors() {
                       toast.error("Failed to print QR code");
                     }
                   }}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all text-sm"
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#4b5563",
+                    color: "#ffffff",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                  }}
                 >
                   🖨️ Print
                 </button>
@@ -376,7 +510,15 @@ function Visitors() {
                       selectedVisitor?.name,
                     );
                   }}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all text-sm"
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#10b981",
+                    color: "#ffffff",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                  }}
                 >
                   📤 Share
                 </button>
@@ -394,7 +536,15 @@ function Visitors() {
                       }
                     }
                   }}
-                  className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all text-sm"
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#8b5cf6",
+                    color: "#ffffff",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                  }}
                 >
                   📋 Copy Token
                 </button>
@@ -404,117 +554,292 @@ function Visitors() {
         </div>
       )}
 
-      {/* QR Generator Modal */}
+      {/* ── QR Generator Modal ── */}
       {showQRModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-red-600">QR Generator</h1>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+            zIndex: 50,
+          }}
+          onClick={() => {
+            setShowQRModal(false);
+            setSelectedVisitorId(null);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "24px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+              width: "100%",
+              maxWidth: "420px",
+              padding: "36px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxSizing: "border-box",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "24px",
+              }}
+            >
+              <h1
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "700",
+                  color: "#ef4444",
+                  margin: 0,
+                }}
+              >
+                QR Generator
+              </h1>
               <button
                 onClick={() => {
                   setShowQRModal(false);
                   setSelectedVisitorId(null);
                 }}
-                className="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center hover:bg-gray-700"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f3f4f6",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#6b7280",
+                  transition: "background-color 0.15s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#e5e7eb")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#f3f4f6")
+                }
               >
-                ✕
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
-            <div className="space-y-5">
+            {/* Modal Form Content */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* Name */}
               <div>
-                <label className="text-sm text-gray-500 mb-1 block">
-                  Name *
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    color: "#9ca3af",
+                    marginBottom: "6px",
+                    fontWeight: "500",
+                  }}
+                >
+                  Name
                 </label>
                 <input
                   type="text"
                   name="name"
                   value={qrFormData.name}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="Enter name"
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "10px",
+                    padding: "10px 14px",
+                    fontSize: "13px",
+                    color: "#374151",
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s",
+                  }}
+                  onFocus={(e) =>
+                    (e.currentTarget.style.borderColor = "#f87171")
+                  }
+                  onBlur={(e) =>
+                    (e.currentTarget.style.borderColor = "#e5e7eb")
+                  }
                   required
                 />
               </div>
 
+              {/* Contact */}
               <div>
-                <label className="text-sm text-gray-500 mb-1 block">
-                  Contact *
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    color: "#9ca3af",
+                    marginBottom: "6px",
+                    fontWeight: "500",
+                  }}
+                >
+                  Contact
                 </label>
                 <input
                   type="text"
                   name="contact"
                   value={qrFormData.contact}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter contact"
+                  placeholder="Enter contact number"
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "10px",
+                    padding: "10px 14px",
+                    fontSize: "13px",
+                    color: "#374151",
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s",
+                  }}
+                  onFocus={(e) =>
+                    (e.currentTarget.style.borderColor = "#f87171")
+                  }
+                  onBlur={(e) =>
+                    (e.currentTarget.style.borderColor = "#e5e7eb")
+                  }
                   required
                 />
               </div>
 
+              {/* ID Number */}
               <div>
-                <label className="text-sm text-gray-500 mb-1 block">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={qrFormData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter email (optional)"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">
-                  ID Number *
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    color: "#9ca3af",
+                    marginBottom: "6px",
+                    fontWeight: "500",
+                  }}
+                >
+                  ID Number
                 </label>
                 <input
                   type="text"
                   name="idNumber"
                   value={qrFormData.idNumber}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="Enter ID number"
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "10px",
+                    padding: "10px 14px",
+                    fontSize: "13px",
+                    color: "#374151",
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s",
+                  }}
+                  onFocus={(e) =>
+                    (e.currentTarget.style.borderColor = "#f87171")
+                  }
+                  onBlur={(e) =>
+                    (e.currentTarget.style.borderColor = "#e5e7eb")
+                  }
                   required
                 />
               </div>
 
-              <div className="relative">
-                <label className="text-sm text-gray-500 mb-1 block">
-                  Company *
+              {/* Company (Dropdown style) */}
+              <div style={{ position: "relative" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    color: "#9ca3af",
+                    marginBottom: "6px",
+                    fontWeight: "500",
+                  }}
+                >
+                  Company
                 </label>
                 <div
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-lg text-gray-700 cursor-pointer flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-red-500"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "10px",
+                    color: qrFormData.company ? "#374151" : "#9ca3af",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    border: "1px solid #e5e7eb",
+                    boxSizing: "border-box",
+                    fontSize: "13px",
+                  }}
                 >
-                  <span
-                    className={
-                      qrFormData.company ? "text-gray-700" : "text-gray-400"
-                    }
-                  >
-                    {qrFormData.company || "Select a Company"}
-                  </span>
+                  <span>{qrFormData.company || "Select a Company"}</span>
                   <svg
-                    className="w-5 h-5 text-gray-400"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    viewBox="0 0 24 24"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
+                    <path d="M6 9l6 6 6-6" />
                   </svg>
                 </div>
 
                 {isDropdownOpen && (
-                  <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 z-10 max-h-64 overflow-y-auto">
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      marginTop: "4px",
+                      width: "100%",
+                      backgroundColor: "#ffffff",
+                      borderRadius: "10px",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      border: "1px solid #e5e7eb",
+                      zIndex: 10,
+                      maxHeight: "220px",
+                      overflowY: "auto",
+                    }}
+                  >
                     {companies.length === 0 ? (
-                      <div className="px-4 py-3 text-gray-400 text-center">
+                      <div
+                        style={{
+                          padding: "12px 16px",
+                          color: "#9ca3af",
+                          textAlign: "center",
+                          fontSize: "13px",
+                        }}
+                      >
                         No companies available
                       </div>
                     ) : (
@@ -522,7 +847,19 @@ function Visitors() {
                         <div
                           key={index}
                           onClick={() => handleCompanySelect(company)}
-                          className="px-4 py-3 hover:bg-gray-50 cursor-pointer text-gray-700 border-b border-gray-100 last:border-b-0"
+                          style={{
+                            padding: "10px 16px",
+                            fontSize: "13px",
+                            color: "#374151",
+                            cursor: "pointer",
+                            borderBottom: "1px solid #f3f4f6",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#f9fafb")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#ffffff")
+                          }
                         >
                           {company}
                         </div>
@@ -535,13 +872,22 @@ function Visitors() {
                           e.stopPropagation();
                           setShowAddCompany(true);
                         }}
-                        className="w-full px-4 py-3 bg-red-600 text-white font-semibold hover:bg-red-700"
+                        style={{
+                          width: "100%",
+                          padding: "10px 16px",
+                          backgroundColor: "#dc2626",
+                          color: "#ffffff",
+                          fontWeight: "600",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                        }}
                       >
                         ADD NEW COMPANY
                       </button>
                     ) : (
                       <div
-                        className="p-3 bg-gray-50"
+                        style={{ padding: "10px", backgroundColor: "#f9fafb" }}
                         onClick={(e) => e.stopPropagation()}
                       >
                         <input
@@ -549,12 +895,31 @@ function Visitors() {
                           value={newCompany}
                           onChange={(e) => setNewCompany(e.target.value)}
                           placeholder="Enter company name"
-                          className="w-full px-3 py-2 border border-gray-300 rounded mb-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "8px",
+                            fontSize: "13px",
+                            marginBottom: "8px",
+                            boxSizing: "border-box",
+                            outline: "none",
+                          }}
                         />
-                        <div className="flex gap-2">
+                        <div style={{ display: "flex", gap: "8px" }}>
                           <button
                             onClick={handleAddCompany}
-                            className="flex-1 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                            style={{
+                              flex: 1,
+                              padding: "8px",
+                              backgroundColor: "#dc2626",
+                              color: "#ffffff",
+                              borderRadius: "8px",
+                              border: "none",
+                              fontSize: "13px",
+                              fontWeight: "600",
+                              cursor: "pointer",
+                            }}
                           >
                             Add
                           </button>
@@ -563,7 +928,17 @@ function Visitors() {
                               setShowAddCompany(false);
                               setNewCompany("");
                             }}
-                            className="flex-1 px-3 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm font-semibold"
+                            style={{
+                              flex: 1,
+                              padding: "8px",
+                              backgroundColor: "#d1d5db",
+                              color: "#374151",
+                              borderRadius: "8px",
+                              border: "none",
+                              fontSize: "13px",
+                              fontWeight: "600",
+                              cursor: "pointer",
+                            }}
                           >
                             Cancel
                           </button>
@@ -575,107 +950,59 @@ function Visitors() {
               </div>
             </div>
 
+            {/* Action button */}
             <button
               onClick={handleSubmitQR}
               disabled={loading}
-              className={`w-full mt-8 py-4 rounded-lg text-white font-bold text-lg transition-all ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-red-600 hover:bg-red-700"
-              }`}
+              style={{
+                width: "100%",
+                backgroundColor: "#ef4444",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "12px",
+                padding: "12px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "background-color 0.15s",
+                marginTop: "24px",
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = "#dc2626";
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = "#ef4444";
+              }}
             >
-              {loading
-                ? "Processing..."
-                : selectedVisitorId
-                  ? "Send QR Code"
-                  : "Create & Send QR"}
+              {loading ? "Processing..." : "Send QR Code"}
             </button>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="mb-1">
-        <h1 className="text-2xl font-semibold text-gray-600">Visitors</h1>
-      </div>
-
-      {/* Loading State */}
-      {loading && visitors.length === 0 && (
-        <div className="flex justify-center items-center h-32">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-500"></div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4">
-          Error: {error}
-        </div>
-      )}
-
-      {/* Total Visitors Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-[400px] mt-4">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 bg-[#e8fbf3] rounded-2xl flex items-center justify-center">
-            <svg
-              className="w-10 h-10 text-[#00c853]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-          </div>
-          <span className="text-[#333] text-2xl font-semibold">
-            Total Visitors
-          </span>
-        </div>
-
-        <div className="flex items-end justify-between">
-          <div className="text-6xl font-bold text-[#2d2d2d] tracking-tight">
-            {totalVisitors || visitors.length}
-          </div>
-
-          <div className="flex items-end gap-[3px] h-20 pb-1">
-            {[30, 45, 60, 80, 95, 100, 85, 70, 55, 40].map((height, idx) => (
-              <div
-                key={idx}
-                className={`w-[10px] rounded-full transition-all ${
-                  idx === 5 ? "bg-[#2d2d2d]" : "bg-gray-200"
-                }`}
-                style={{ height: `${height}%` }}
-              ></div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2 mt-4 mb-2">
-        {["all", "active", "expired", "checked-in"].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              filterStatus === status
-                ? "bg-red-500 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </button>
-        ))}
-        <button
-          onClick={handleExportCSV}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all"
+      {/* ── Page Header ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+          maxWidth: "720px",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "20px",
+            fontWeight: "600",
+            color: "#374151",
+            margin: 0,
+            letterSpacing: "-0.01em",
+          }}
         >
-          📊 Export CSV
-        </button>
+          Visitors
+        </h1>
+
+        {/* Dark Add button matching Companies design */}
         <button
           onClick={() => {
             setQrFormData({
@@ -689,243 +1016,375 @@ function Visitors() {
             setSelectedVisitorId(null);
             setShowQRModal(true);
           }}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-green-500 text-white hover:bg-green-600 transition-all ml-auto"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            backgroundColor: "#1f2937",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "10px",
+            padding: "8px 14px",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+            transition: "background-color 0.15s",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "#111827")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.backgroundColor = "#1f2937")
+          }
         >
-          + Add New Visitor
+          Add
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "22px",
+              height: "22px",
+              backgroundColor: "rgba(255,255,255,0.15)",
+              borderRadius: "6px",
+            }}
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </span>
         </button>
       </div>
 
-      {/* Visitors Table */}
-      <div className="bg-white rounded-3xl shadow-sm p-4 max-w-6xl mt-4">
-        <div className="overflow-x-auto">
-          <table className="w-full border-separate border-spacing-y-0">
-            <thead>
-              <tr className="bg-gray-50/80">
-                <th className="text-left py-5 px-6 text-md font-normal text-red-500 first:rounded-l-2xl">
-                  Visitor Name
+      {/* ── Total Visitors Card ─────────────────────────────── */}
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "16px",
+          padding: "20px 24px",
+          width: "fit-content",
+          minWidth: "320px",
+          maxWidth: "380px",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          marginBottom: "20px",
+        }}
+      >
+        {/* Icon + Label row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "14px",
+          }}
+        >
+          {/* Green circle icon */}
+          <div
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "50%",
+              backgroundColor: "#d1fae5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
+
+          <span
+            style={{
+              fontSize: "15px",
+              fontWeight: "600",
+              color: "#1f2937",
+            }}
+          >
+            Total Visitors
+          </span>
+        </div>
+
+        {/* Number + Bar chart row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "48px",
+              fontWeight: "700",
+              color: "#111827",
+              lineHeight: 1,
+              letterSpacing: "-2px",
+            }}
+          >
+            {totalVisitors || 243}
+          </span>
+
+          {/* Mini bar chart */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: "4px",
+              height: "52px",
+            }}
+          >
+            {barHeights.map((h, i) => (
+              <div
+                key={i}
+                style={{
+                  width: "7px",
+                  height: `${h}%`,
+                  borderRadius: "3px 3px 2px 2px",
+                  backgroundColor: i === 5 ? "#1f2937" : "#d1d5db",
+                  transition: "background-color 0.2s",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Visitors Table ───────────────────────────────────── */}
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "16px",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          overflow: "hidden",
+          paddingBottom: "20px",
+          maxWidth: "720px",
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            tableLayout: "auto",
+          }}
+        >
+          {/* Table Head */}
+          <thead>
+            <tr>
+              {["Visitor Name", "Phone Number", ""].map((col, idx) => (
+                <th
+                  key={idx}
+                  style={{
+                    textAlign: idx === 2 ? "right" : "left",
+                    padding: "14px 28px",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#ef4444",
+                    letterSpacing: "0.01em",
+                    borderBottom: "1px solid #f3f4f6",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {col}
                 </th>
-                <th className="text-left py-5 px-6 text-md font-normal text-red-500">
-                  Phone Number
-                </th>
-                <th className="text-left py-5 px-6 text-md font-normal text-red-500">
-                  Company
-                </th>
-                <th className="text-left py-5 px-6 text-md font-normal text-red-500">
-                  Status
-                </th>
-                <th className="text-left py-5 px-6 text-md font-normal text-red-500">
-                  QR Expiry
-                </th>
-                <th className="text-center py-5 px-6 text-md font-normal text-red-500 last:rounded-r-2xl">
-                  Action
-                </th>
+              ))}
+            </tr>
+          </thead>
+
+          {/* Table Body */}
+          <tbody>
+            {visitors.length === 0 ? (
+              <tr>
+                <td
+                  colSpan="3"
+                  style={{
+                    padding: "40px",
+                    textAlign: "center",
+                    color: "#9ca3af",
+                    fontSize: "14px",
+                  }}
+                >
+                  No visitors found
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y-0">
-              {visitors.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-10 text-gray-400">
-                    No visitors found
+            ) : (
+              visitors.map((visitor) => (
+                <tr
+                  key={visitor.id}
+                  style={{
+                    borderBottom: "1px solid #f3f4f6",
+                  }}
+                >
+                  {/* Name */}
+                  <td
+                    style={{
+                      padding: "13px 28px",
+                      fontSize: "13.5px",
+                      color: "#1f2937",
+                      fontWeight: "500",
+                    }}
+                  >
+                    <div
+                      style={{ cursor: "pointer" }}
+                      onClick={() => handleShowQRCode(visitor)}
+                    >
+                      {visitor.name}
+                    </div>
+                  </td>
+
+                  {/* Phone */}
+                  <td
+                    style={{
+                      padding: "13px 28px",
+                      fontSize: "13.5px",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {visitor.phone}
+                  </td>
+
+                  {/* Action */}
+                  <td
+                    style={{
+                      padding: "13px 28px",
+                      textAlign: "right",
+                    }}
+                  >
+                    <button
+                      onClick={() => handleSendQR(visitor)}
+                      style={{
+                        backgroundColor: "#ef4444",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "8px 18px",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        transition: "background-color 0.15s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#dc2626")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#ef4444")
+                      }
+                    >
+                      Send QR
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                visitors.map((visitor) => (
-                  <tr
-                    key={visitor.id}
-                    className="hover:bg-gray-50/50 transition-colors"
-                  >
-                    <td className="py-6 px-6 text-base text-gray-700 font-medium">
-                      <div>
-                        <div>{visitor.name}</div>
-                        {visitor.email && (
-                          <div className="text-xs text-gray-400">
-                            {visitor.email}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-6 px-6 text-base text-gray-700">
-                      {visitor.phone}
-                    </td>
-                    <td className="py-6 px-6 text-base text-gray-700">
-                      {visitor.company || "N/A"}
-                    </td>
-                    <td className="py-6 px-6 text-base">
-                      <div className="flex flex-col gap-1">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium text-center ${
-                            visitor.checkedIn
-                              ? "bg-green-100 text-green-700"
-                              : isQRExpired(visitor.qrExpiresAt)
-                                ? "bg-red-100 text-red-700"
-                                : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {visitor.checkedIn
-                            ? "✅ Checked In"
-                            : isQRExpired(visitor.qrExpiresAt)
-                              ? "⏰ Expired"
-                              : "⏳ Pending"}
-                        </span>
-                        {visitor.checkedInAt && (
-                          <span className="text-xs text-gray-400">
-                            {formatDate(visitor.checkedInAt)}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-6 px-6 text-sm text-gray-500">
-                      {visitor.qrExpiresAt ? (
-                        <div>
-                          <div>{formatDate(visitor.qrExpiresAt)}</div>
-                          {isQRExpired(visitor.qrExpiresAt) && (
-                            <span className="text-xs text-red-500">
-                              Expired
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        "N/A"
-                      )}
-                    </td>
-                    <td className="py-6 px-6">
-                      <div className="flex flex-wrap items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleShowQRCode(visitor)}
-                          className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-                          title="View QR Code"
-                        >
-                          📱
-                        </button>
-
-                        <button
-                          onClick={() => handleSendQR(visitor)}
-                          className="bg-[#ef4444] hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all"
-                          disabled={visitor.checkedIn}
-                        >
-                          Send QR
-                        </button>
-
-                        {!visitor.checkedIn &&
-                          !isQRExpired(visitor.qrExpiresAt) && (
-                            <button
-                              onClick={() => handleCheckIn(visitor.id)}
-                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-                            >
-                              Check In
-                            </button>
-                          )}
-
-                        <button
-                          onClick={() => handleRegenerateQR(visitor.id)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-                          title="Regenerate QR"
-                        >
-                          🔄
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteVisitor(visitor.id)}
-                          className="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 p-4 border-t border-gray-200">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              marginTop: "24px",
+            }}
+          >
+            {/* Page number 1 */}
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`w-8 h-8 rounded flex items-center justify-center ${
-                currentPage === 1
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
+              onClick={() => handlePageChange(1)}
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                border: "none",
+                backgroundColor: currentPage === 1 ? "#fee2e2" : "transparent",
+                color: "#ef4444",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
+              1
             </button>
 
-            {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => handlePageChange(pageNum)}
-                  className={`w-8 h-8 rounded text-sm font-medium ${
-                    currentPage === pageNum
-                      ? "bg-red-500 text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-
-            {currentPage < totalPages - 2 && totalPages > 5 && (
-              <>
-                <span className="text-gray-400">...</span>
-                <button
-                  onClick={() => handlePageChange(totalPages)}
-                  className="w-8 h-8 rounded text-sm font-medium text-gray-600 hover:bg-gray-100"
-                >
-                  {totalPages}
-                </button>
-              </>
+            {/* Page number 2 */}
+            {totalPages >= 2 && (
+              <button
+                onClick={() => handlePageChange(2)}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  border: "none",
+                  backgroundColor: currentPage === 2 ? "#fee2e2" : "transparent",
+                  color: currentPage === 2 ? "#ef4444" : "#6b7280",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                2
+              </button>
             )}
 
+            {/* Ellipsis / Middle Pages */}
+            {totalPages > 2 && (
+              <span style={{ color: "#9ca3af", fontSize: "13px" }}>
+                3......... {totalPages}
+              </span>
+            )}
+
+            {/* Next Button */}
             <button
-              onClick={() => handlePageChange(currentPage + 1)}
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className={`w-8 h-8 rounded flex items-center justify-center ${
-                currentPage === totalPages
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                border: "1px solid #d1d5db",
+                backgroundColor: "#ffffff",
+                color: currentPage === totalPages ? "#d1d5db" : "#374151",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+              }}
             >
               <svg
-                className="w-4 h-4"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                viewBox="0 0 24 24"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 5l7 7-7 7"
-                />
+                <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
           </div>

@@ -4,9 +4,16 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+const getBaseUrl = () => {
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return "http://localhost:8000/api";
+  }
+  return "https://mb3-ivxh.onrender.com/api";
+};
+
 // Configure axios defaults
 const api = axios.create({
-  baseURL: 'https://mb3-ivxh.onrender.com/api',
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

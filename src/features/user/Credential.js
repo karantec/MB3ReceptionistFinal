@@ -1,5 +1,5 @@
 // src/pages/Companies.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NotificationManager } from "react-notifications";
 import companyService from "../../services/company.service";
 
@@ -20,31 +20,35 @@ function Companies() {
   });
   const [openMenuId, setOpenMenuId] = useState(null);
   const [industries, setIndustries] = useState([]);
+  const menuRef = useRef(null);
 
-  // Fetch companies on component mount
   useEffect(() => {
     fetchCompanies();
     fetchIndustries();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchCompanies = async () => {
     try {
       setLoading(true);
       const response = await companyService.getAll();
-      console.log("Companies API Response:", response);
-
-      // Check if response has companies field (from your API)
       if (response && response.success) {
-        // Your API returns data in 'companies' field
-        const companiesData = response.companies || [];
-        setCompanies(companiesData);
-        console.log("Companies loaded:", companiesData.length);
+        setCompanies(response.companies || []);
       } else {
         setCompanies([]);
         NotificationManager.error("Failed to fetch companies", "Error");
       }
     } catch (error) {
-      console.error("Fetch error:", error);
       setCompanies([]);
       NotificationManager.error(
         error.message || "Failed to fetch companies",
@@ -59,7 +63,7 @@ function Companies() {
     try {
       const response = await companyService.getIndustries();
       if (response && response.success) {
-        setIndustries(response.data || []);
+        setIndustries(response.industries || response.data || []);
       }
     } catch (error) {
       console.error("Failed to fetch industries:", error);
@@ -96,7 +100,6 @@ function Companies() {
   };
 
   const handleSaveCompany = async () => {
-    // Validate required fields
     if (!formData.companyName.trim()) {
       NotificationManager.warning("Company name is required", "Warning");
       return;
@@ -105,10 +108,8 @@ function Companies() {
       NotificationManager.warning("Contact person is required", "Warning");
       return;
     }
-
     try {
       if (editingCompany) {
-        // Update existing company
         const response = await companyService.update(
           editingCompany._id,
           formData,
@@ -127,7 +128,6 @@ function Companies() {
           );
         }
       } else {
-        // Create new company
         const response = await companyService.create(formData);
         if (response && response.success) {
           NotificationManager.success(
@@ -144,7 +144,6 @@ function Companies() {
         }
       }
     } catch (error) {
-      console.error("Save error:", error);
       NotificationManager.error(
         error.response?.data?.message || error.message || "Operation failed",
         "Error",
@@ -184,7 +183,6 @@ function Companies() {
           );
         }
       } catch (error) {
-        console.error("Delete error:", error);
         NotificationManager.error(
           error.response?.data?.message || error.message || "Delete failed",
           "Error",
@@ -196,334 +194,566 @@ function Companies() {
   const handleSearch = async (e) => {
     const term = e.target.value;
     setSearchTerm(term);
-
     if (term.trim()) {
       try {
         const response = await companyService.search(term);
         if (response && response.success) {
-          // Check if response has companies field
           setCompanies(response.companies || response.data || []);
         }
       } catch (error) {
         console.error("Search error:", error);
       }
     } else {
-      fetchCompanies(); // Reset to all companies
+      fetchCompanies();
     }
   };
 
-  // Filter companies based on search term (client-side fallback)
   const filteredCompanies = companies.filter((company) => {
     if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
+    const s = searchTerm.toLowerCase();
     return (
-      (company.companyName || "").toLowerCase().includes(search) ||
-      (company.contactPerson || "").toLowerCase().includes(search) ||
-      (company.email || "").toLowerCase().includes(search) ||
-      (company.industry || "").toLowerCase().includes(search)
+      (company.companyName || "").toLowerCase().includes(s) ||
+      (company.contactPerson || "").toLowerCase().includes(s) ||
+      (company.email || "").toLowerCase().includes(s) ||
+      (company.industry || "").toLowerCase().includes(s)
     );
   });
 
+  /* ─── LOADING STATE ─────────────────────────────────── */
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "#f3f4f6",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "44px",
+              height: "44px",
+              border: "4px solid #ef4444",
+              borderTopColor: "transparent",
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+              margin: "0 auto",
+            }}
+          />
+          <p style={{ marginTop: "12px", color: "#6b7280", fontSize: "14px" }}>
+            Loading...
+          </p>
         </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
+  /* ─── MAIN RENDER ───────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-600">Companies</h1>
-          <button
-            onClick={handleOpenAddModal}
-            className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#f3f4f6",
+        padding: "28px 32px",
+        fontFamily: "Inter, sans-serif",
+        position: "relative",
+      }}
+    >
+      {/* ── Header ──────────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+          maxWidth: "660px",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "20px",
+            fontWeight: "600",
+            color: "#374151",
+            margin: 0,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Companies
+        </h1>
+
+        {/* Add button — dark pill with grid icon */}
+        <button
+          onClick={handleOpenAddModal}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            backgroundColor: "#1f2937",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "10px",
+            padding: "8px 14px 8px 16px",
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            transition: "background-color 0.15s",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "#111827")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.backgroundColor = "#1f2937")
+          }
+        >
+          Add
+          {/* Grid / Windows icon */}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            style={{ opacity: 0.85 }}
           >
-            Add
-            <div className="bg-white/20 p-1.5 rounded-lg">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="3"
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-            </div>
-          </button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search companies by name, contact, email, or industry..."
-            value={searchTerm}
-            onChange={handleSearch}
-            className="w-full md:w-96 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
-          />
-          <span className="ml-3 text-sm text-gray-500">
-            {filteredCompanies.length} companies found
-          </span>
-        </div>
-
-        {/* Companies List */}
-        <div className="space-y-3">
-          {filteredCompanies.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-8 text-center text-gray-500">
-              {searchTerm
-                ? "No matching companies found"
-                : "No companies found"}
-            </div>
-          ) : (
-            filteredCompanies.map((company) => (
-              <div
-                key={company._id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 flex justify-between items-center hover:shadow-md transition-shadow"
-              >
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900 font-medium">
-                    {company.companyName}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-xs text-gray-500">
-                      Contact: {company.contactPerson || "N/A"}
-                    </span>
-                    {company.industry && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        {company.industry}
-                      </span>
-                    )}
-                    {company.email && (
-                      <span className="text-xs text-gray-500">
-                        {company.email}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <button
-                    onClick={() =>
-                      setOpenMenuId(
-                        openMenuId === company._id ? null : company._id,
-                      )
-                    }
-                    className="p-1 text-gray-500 hover:text-gray-700 text-lg leading-none"
-                  >
-                    ⋮
-                  </button>
-
-                  {openMenuId === company._id && (
-                    <div className="absolute right-0 top-0 mt-8 z-10 bg-white border border-gray-100 rounded-xl shadow-lg p-2 flex flex-col gap-2 w-40">
-                      <button
-                        onClick={() => handleOpenEditModal(company)}
-                        className="w-full py-2 px-4 rounded-lg border border-red-200 text-red-500 bg-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                        </svg>
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCompany(company._id)}
-                        className="w-full py-2 px-4 rounded-lg bg-red-500 text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-red-600 transition-colors"
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+            <rect x="2" y="2" width="6" height="6" rx="1.5" fill="white" />
+            <rect x="10" y="2" width="6" height="6" rx="1.5" fill="white" />
+            <rect x="2" y="10" width="6" height="6" rx="1.5" fill="white" />
+            <rect x="10" y="10" width="6" height="6" rx="1.5" fill="white" />
+          </svg>
+        </button>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* ── Company Cards List ────────────────────── */}
+      <div
+        style={{
+          maxWidth: "660px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+        ref={menuRef}
+      >
+        {filteredCompanies.length === 0 ? (
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              border: "1px solid #e5e7eb",
+              padding: "40px",
+              textAlign: "center",
+              color: "#9ca3af",
+              fontSize: "14px",
+            }}
+          >
+            {searchTerm ? "No matching companies found" : "No companies found"}
+          </div>
+        ) : (
+          filteredCompanies.map((company) => (
+            <div
+              key={company._id}
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "12px",
+                border: "1px solid #e9eaec",
+                padding: "15px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                position: "relative",
+                transition: "box-shadow 0.15s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)")
+              }
+              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}
+            >
+              {/* Company name only */}
+              <span
+                style={{
+                  fontSize: "13.5px",
+                  fontWeight: "500",
+                  color: "#1f2937",
+                  flex: 1,
+                }}
+              >
+                {company.companyName}
+              </span>
+
+              {/* ⋮ Kebab menu */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() =>
+                    setOpenMenuId(
+                      openMenuId === company._id ? null : company._id,
+                    )
+                  }
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                    color: "#9ca3af",
+                    fontSize: "18px",
+                    lineHeight: 1,
+                    borderRadius: "6px",
+                    transition: "background-color 0.15s, color 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f3f4f6";
+                    e.currentTarget.style.color = "#374151";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = "#9ca3af";
+                  }}
+                  title="Options"
+                >
+                  ⋮
+                </button>
+
+                {openMenuId === company._id && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 4px)",
+                      zIndex: 50,
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "12px",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      padding: "6px",
+                      minWidth: "140px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
+                    {/* Edit */}
+                    <button
+                      onClick={() => handleOpenEditModal(company)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #fecaca",
+                        backgroundColor: "#fff",
+                        color: "#ef4444",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        transition: "background-color 0.12s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#fef2f2")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#fff")
+                      }
+                    >
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 20 20"
+                        fill="#ef4444"
+                      >
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                      Edit
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => handleDeleteCompany(company._id)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "none",
+                        backgroundColor: "#ef4444",
+                        color: "#ffffff",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        transition: "background-color 0.12s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#dc2626")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#ef4444")
+                      }
+                    >
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 20 20"
+                        fill="white"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ── Add / Edit Modal ─────────────────────── */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="flex justify-between items-center px-6 pt-5 pb-2">
-              <h2 className="text-lg font-bold text-red-500">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: "16px",
+          }}
+          onClick={(e) => e.target === e.currentTarget && handleCloseModal()}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "20px",
+              width: "100%",
+              maxWidth: "420px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "20px 24px 12px",
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "700",
+                  color: "#ef4444",
+                  margin: 0,
+                }}
+              >
                 {editingCompany ? "Edit Company" : "Add Company"}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f3f4f6",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#6b7280",
+                  transition: "background-color 0.12s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#e5e7eb")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#f3f4f6")
+                }
               >
                 <svg
-                  className="w-3.5 h-3.5"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  viewBox="0 0 24 24"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                  <path d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            {/* Body */}
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">
-                  Company Name *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter company name"
-                  value={formData.companyName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, companyName: e.target.value })
-                  }
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 border-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">
-                  Contact Person *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter contact person name"
-                  value={formData.contactPerson}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contactPerson: e.target.value })
-                  }
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 border-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="Enter email address"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 border-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">
-                  Phone
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter phone number"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 border-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">
-                  Industry
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter industry"
-                  value={formData.industry}
-                  onChange={(e) =>
-                    setFormData({ ...formData, industry: e.target.value })
-                  }
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 border-none"
-                />
-                {industries.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {industries.slice(0, 5).map((ind) => (
-                      <button
-                        key={ind}
-                        type="button"
-                        onClick={() =>
-                          setFormData({ ...formData, industry: ind })
-                        }
-                        className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded-full transition-colors"
-                      >
-                        {ind}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter address"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 border-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">
-                  Website
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter website URL"
-                  value={formData.website}
-                  onChange={(e) =>
-                    setFormData({ ...formData, website: e.target.value })
-                  }
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 border-none"
-                />
-              </div>
+            {/* Modal Body */}
+            <div
+              style={{
+                padding: "8px 24px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+              }}
+            >
+              {[
+                {
+                  label: "Company Name *",
+                  key: "companyName",
+                  placeholder: "Enter company name",
+                  type: "text",
+                },
+                {
+                  label: "Contact Person *",
+                  key: "contactPerson",
+                  placeholder: "Enter contact person name",
+                  type: "text",
+                },
+                {
+                  label: "Email",
+                  key: "email",
+                  placeholder: "Enter email address",
+                  type: "email",
+                },
+                {
+                  label: "Phone",
+                  key: "phone",
+                  placeholder: "Enter phone number",
+                  type: "text",
+                },
+                {
+                  label: "Industry",
+                  key: "industry",
+                  placeholder: "Enter industry",
+                  type: "text",
+                },
+                {
+                  label: "Address",
+                  key: "address",
+                  placeholder: "Enter address",
+                  type: "text",
+                },
+                {
+                  label: "Website",
+                  key: "website",
+                  placeholder: "Enter website URL",
+                  type: "text",
+                },
+              ].map(({ label, key, placeholder, type }) => (
+                <div key={key}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "11px",
+                      color: "#9ca3af",
+                      marginBottom: "6px",
+                      fontWeight: "500",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    placeholder={placeholder}
+                    value={formData[key]}
+                    onChange={(e) =>
+                      setFormData({ ...formData, [key]: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      backgroundColor: "#f9fafb",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "10px",
+                      padding: "10px 14px",
+                      fontSize: "13.5px",
+                      color: "#1f2937",
+                      outline: "none",
+                      transition: "border-color 0.15s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#f87171")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#e5e7eb")
+                    }
+                  />
+                  {/* Industry quick-select chips */}
+                  {key === "industry" && industries.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "6px",
+                        marginTop: "6px",
+                      }}
+                    >
+                      {industries.slice(0, 5).map((ind) => (
+                        <button
+                          key={ind}
+                          type="button"
+                          onClick={() =>
+                            setFormData({ ...formData, industry: ind })
+                          }
+                          style={{
+                            fontSize: "11px",
+                            backgroundColor: "#f3f4f6",
+                            border: "none",
+                            borderRadius: "20px",
+                            padding: "3px 10px",
+                            cursor: "pointer",
+                            color: "#374151",
+                            transition: "background-color 0.12s",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#e5e7eb")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#f3f4f6")
+                          }
+                        >
+                          {ind}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 pb-6 pt-2">
+            {/* Modal Footer */}
+            <div style={{ padding: "4px 24px 24px" }}>
               <button
                 onClick={handleSaveCompany}
-                className="w-full bg-red-500 hover:bg-red-600 active:bg-red-700 text-white py-3 rounded-xl font-semibold text-sm transition-colors"
+                style={{
+                  width: "100%",
+                  backgroundColor: "#ef4444",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "12px",
+                  padding: "13px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "background-color 0.15s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#dc2626")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#ef4444")
+                }
               >
                 {editingCompany ? "Update" : "Add"}
               </button>
