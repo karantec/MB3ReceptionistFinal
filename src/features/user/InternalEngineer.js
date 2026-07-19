@@ -729,6 +729,46 @@ function Visitors() {
                 />
               </div>
 
+              {/* Email */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    color: "#9ca3af",
+                    marginBottom: "6px",
+                    fontWeight: "500",
+                  }}
+                >
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={qrFormData.email}
+                  onChange={handleInputChange}
+                  placeholder="Enter email address"
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "10px",
+                    padding: "10px 14px",
+                    fontSize: "13px",
+                    color: "#374151",
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s",
+                  }}
+                  onFocus={(e) =>
+                    (e.currentTarget.style.borderColor = "#f87171")
+                  }
+                  onBlur={(e) =>
+                    (e.currentTarget.style.borderColor = "#e5e7eb")
+                  }
+                />
+              </div>
+
               {/* ID Number */}
               <div>
                 <label
