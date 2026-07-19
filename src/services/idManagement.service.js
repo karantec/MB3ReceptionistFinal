@@ -1,3 +1,6 @@
+// src/services/idManagement.service.js
+import axios from "axios";
+
 const API_URL = "https://api.avocadotech.in/api/IDManage";
 
 // Get auth token from localStorage
