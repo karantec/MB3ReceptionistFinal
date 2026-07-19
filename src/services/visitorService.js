@@ -2,14 +2,9 @@
 import axios from "axios";
 
 // Base API configuration
-const getBaseUrl = () => {
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-    return "http://localhost:8000/api/IDVisitor";
-  }
-  return process.env.REACT_APP_API_URL || "https://mb3-ivxh.onrender.com/api/IDVisitor";
-};
-
-const API_BASE_URL = getBaseUrl();
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  "https://mb3-ivxh.onrender.com/api/IDVisitor";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -342,16 +337,25 @@ export const visitorService = {
   // Send QR to visitor
   sendQR: async (id, sendData = {}) => {
     try {
-      console.log(`TRACE: [Frontend Service] Outgoing request to POST /visitors/${id}/send-qr with payload:`, sendData);
+      console.log(
+        `TRACE: [Frontend Service] Outgoing request to POST /visitors/${id}/send-qr with payload:`,
+        sendData,
+      );
       const response = await apiClient.post(
         `/visitors/${id}/send-qr`,
         sendData,
       );
-      console.log(`TRACE: [Frontend Service] Received success response for /visitors/${id}/send-qr:`, response.data);
+      console.log(
+        `TRACE: [Frontend Service] Received success response for /visitors/${id}/send-qr:`,
+        response.data,
+      );
       return response.data;
     } catch (error) {
       const errMsg = error.response?.data || error.message;
-      console.error(`TRACE: [Frontend Service] API call failed for /visitors/${id}/send-qr:`, errMsg);
+      console.error(
+        `TRACE: [Frontend Service] API call failed for /visitors/${id}/send-qr:`,
+        errMsg,
+      );
       throw errMsg;
     }
   },

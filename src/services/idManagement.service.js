@@ -1,14 +1,7 @@
 // src/services/idManagement.service.js
 import axios from "axios";
 
-const getBaseUrl = () => {
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-    return "http://localhost:8000/api/IDManage";
-  }
-  return "https://mb3-ivxh.onrender.com/api/IDManage";
-};
-
-const API_URL = getBaseUrl();
+const API_URL = "https://mb3-ivxh.onrender.com/api/IDManage";
 
 // Get auth token from localStorage
 const getAuthToken = () => {

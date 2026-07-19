@@ -1,14 +1,7 @@
 // src/services/company.service.js
 import axios from "axios";
 
-const getBaseUrl = () => {
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-    return "http://localhost:8000/api/Company";
-  }
-  return "https://mb3-ivxh.onrender.com/api/Company";
-};
-
-const API_URL = getBaseUrl();
+const API_URL = "https://mb3-ivxh.onrender.com/api/Company";
 
 // Get auth token from localStorage
 const getAuthToken = () => {
