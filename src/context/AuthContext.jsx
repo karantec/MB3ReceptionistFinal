@@ -6,11 +6,11 @@ const AuthContext = createContext(null);
 
 // Configure axios defaults
 const api = axios.create({
-  baseURL: 'https://mb3-ivxh.onrender.com/api',
+  baseURL: 'https://api.avocadotech.in/api',
   headers: {
     'Content-Type': 'application/json',
   },
-}); 
+});
 
 // Add token to all requests if it exists
 api.interceptors.request.use(

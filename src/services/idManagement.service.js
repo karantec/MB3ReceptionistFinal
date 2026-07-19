@@ -1,7 +1,4 @@
-// src/services/idManagement.service.js
-import axios from "axios";
-
-const API_URL = "https://mb3-ivxh.onrender.com/api/IDManage";
+const API_URL = "https://api.avocadotech.in/api/IDManage";
 
 // Get auth token from localStorage
 const getAuthToken = () => {
